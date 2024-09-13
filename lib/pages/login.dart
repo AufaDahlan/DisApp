@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:realtime/pages/EmailVerification.dart';
 import 'package:realtime/pages/ForgotPassword.dart';
 import 'package:realtime/pages/home.dart';
 import 'package:realtime/pages/signup.dart';
@@ -23,9 +29,12 @@ class _LoginPageState extends State<LoginPage> {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Harap isi email dan password.'),
-          duration: Duration(seconds: 3),
+          content: Text('Harap isi email dan kata sandi.'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
       return;
@@ -36,20 +45,94 @@ class _LoginPageState extends State<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => Home_Page()),
-      );
+
+      User? user = userCredential.user;
+
+      if (user != null) {
+        if (!user.emailVerified) {
+          // Redirect to Verifikasi Page if email is not verified
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => Verifikasi(
+                email: user.email!,
+                uid: user.uid,
+              ),
+            ),
+          );
+          return;
+        }
+
+        // Ambil data pengguna dari Realtime Database
+        DatabaseReference userRef =
+            FirebaseDatabase.instance.ref().child('users').child(user.uid);
+
+        userRef.onValue.listen((DatabaseEvent event) async {
+          if (event.snapshot.value != null) {
+            var userValue = event.snapshot.value as Map<dynamic, dynamic>?;
+            if (userValue != null) {
+              Map<String, dynamic> userData = {
+                'uid': user.uid,
+                'nama': userValue['nama'] ?? 'N/A',
+                'telepon': userValue['telepon'] ?? 'N/A',
+                'email': userValue['email'] ?? 'N/A',
+              };
+              print('Data Pengguna: $userData');
+
+              // Simpan data pengguna ke file JSON
+              await _saveUserDataToFile(userData);
+
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => Home_Page(),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Data pengguna tidak ditemukan.'),
+                  backgroundColor: Colors.red,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              );
+            }
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Data pengguna tidak ditemukan.'),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            );
+          }
+        });
+      }
     } catch (e) {
       print("Gagal masuk: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Cek kembali email dan password.'),
-          duration: Duration(seconds: 3),
+          content: Text('Cek kembali email dan kata sandi.'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
+  }
+
+  Future<void> _saveUserDataToFile(Map<String, dynamic> userData) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/user_data.json');
+    await file.writeAsString(json.encode(userData));
   }
 
   @override
@@ -62,11 +145,15 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                SizedBox(
+                  height: 50,
+                ),
                 Text(
                   "DisApp",
                   style: TextStyle(
                     fontSize: 40,
                     fontWeight: FontWeight.bold,
+                    color: Colors.blue,
                   ),
                 ),
                 SizedBox(
@@ -75,10 +162,16 @@ class _LoginPageState extends State<LoginPage> {
                 TextField(
                   controller: _emailController,
                   decoration: InputDecoration(
-                      contentPadding:
-                          EdgeInsets.symmetric(vertical: 13, horizontal: 10),
-                      border: OutlineInputBorder(),
-                      labelText: 'Email'),
+                    contentPadding:
+                        EdgeInsets.symmetric(vertical: 13, horizontal: 10),
+                    border: OutlineInputBorder(),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.blue),
+                    ),
+                    labelText: 'Email',
+                    floatingLabelStyle: TextStyle(color: Colors.blue),
+                  ),
+                  cursorColor: Colors.blue,
                 ),
                 SizedBox(height: 15),
                 TextField(
@@ -87,19 +180,27 @@ class _LoginPageState extends State<LoginPage> {
                     contentPadding:
                         EdgeInsets.symmetric(vertical: 13, horizontal: 10),
                     border: OutlineInputBorder(),
-                    labelText: 'Password',
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.blue),
+                    ),
+                    labelText: 'Kata Sandi',
+                    floatingLabelStyle: TextStyle(color: Colors.blue),
                     suffixIcon: GestureDetector(
                       onTap: () {
                         setState(() {
                           _obscurePassword = !_obscurePassword;
                         });
                       },
-                      child: Icon(_obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
+                      child: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: Colors.blue,
+                      ),
                     ),
                   ),
                   obscureText: _obscurePassword,
+                  cursorColor: Colors.blue,
                 ),
                 SizedBox(height: 15),
                 Row(
@@ -115,7 +216,7 @@ class _LoginPageState extends State<LoginPage> {
                         );
                       },
                       child: Text(
-                        "Lupa password?",
+                        "Lupa Kata Sandi?",
                         style: TextStyle(color: Colors.blue),
                       ),
                     ),
@@ -135,7 +236,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         child: Text(
-                          'Login',
+                          'Masuk',
                           style: TextStyle(
                             fontSize: 20,
                             color: Colors.white,

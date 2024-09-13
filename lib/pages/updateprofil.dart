@@ -22,10 +22,8 @@ class _uprofil_pageState extends State<uprofil_page> {
   void initState() {
     super.initState();
     _currentUser = FirebaseAuth.instance.currentUser;
-    _userRef = FirebaseDatabase.instance
-        .reference()
-        .child('users')
-        .child(_currentUser!.uid);
+    _userRef =
+        FirebaseDatabase.instance.ref().child('users').child(_currentUser!.uid);
   }
 
   void updateUserData(String field, String newValue) {
@@ -61,10 +59,13 @@ class _uprofil_pageState extends State<uprofil_page> {
         builder: (BuildContext context) {
           return AlertDialog(
             title: Text("Izin Penting"),
-            content: Text("Untuk melanjutkan, izin penyimpanan diperlukan."),
+            content: Text("Untuk melanjutkan, memerlukan izin penyimpanan."),
             actions: <Widget>[
               TextButton(
-                child: Text("Tutup"),
+                child: Text(
+                  "Tutup",
+                  style: TextStyle(color: Colors.blue),
+                ),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
@@ -108,7 +109,7 @@ class _uprofil_pageState extends State<uprofil_page> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("Upload Profile Picture"),
+          title: Text("Unggah foto Profil"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -117,8 +118,11 @@ class _uprofil_pageState extends State<uprofil_page> {
                   Navigator.pop(context);
                   selectImage(ImageSource.gallery);
                 },
-                leading: Icon(Icons.image),
-                title: Text("Select from Gallery"),
+                leading: Icon(
+                  Icons.image,
+                  color: Colors.blue,
+                ),
+                title: Text("Pilih dari galeri"),
               ),
               ListTile(
                 onTap: () {
@@ -129,8 +133,11 @@ class _uprofil_pageState extends State<uprofil_page> {
                         null; // Setel kembali variabel _imageFile menjadi null
                   });
                 },
-                leading: Icon(Icons.delete),
-                title: Text("Remove Profile Picture"),
+                leading: Icon(
+                  Icons.delete,
+                  color: Colors.blue,
+                ),
+                title: Text("Hapus foto profil"),
               ),
             ],
           ),
@@ -197,7 +204,7 @@ class _uprofil_pageState extends State<uprofil_page> {
           },
         ),
         title: Text(
-          "Profile",
+          "Profil",
           style: TextStyle(
               fontSize: 22,
               fontFamily: 'Inter',
@@ -223,242 +230,287 @@ class _uprofil_pageState extends State<uprofil_page> {
                 Map<dynamic, dynamic> userData =
                     snapshot.data!.snapshot.value as Map<dynamic, dynamic>;
 
-                return Padding(
-                  padding: const EdgeInsets.all(25),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      if (userData['profilePicture'] != null)
-                        // SizedBox(
-                        //   height: 10,
-                        // ),
-                        Stack(
-                          children: [
-                            if (userData['profilePicture'] != null &&
-                                userData['profilePicture'] != "")
-                              CircleAvatar(
-                                radius: 80,
-                                backgroundColor: Colors.grey,
-                                backgroundImage:
-                                    NetworkImage(userData['profilePicture']),
-                                child: GestureDetector(
-                                  onTap: () {
-                                    showLargeImage(userData['profilePicture']);
-                                  },
-                                ),
-                              ),
-                            if (userData['profilePicture'] == null ||
-                                userData['profilePicture'] == "")
-                              CircleAvatar(
-                                radius: 80,
-                                backgroundColor: Colors.grey,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    showLargeImage(userData['profilePicture']);
-                                  },
-                                  child: Icon(Icons.person,
-                                      size: 100, color: Colors.white),
-                                ),
-                              ),
-                            Positioned(
-                              bottom: 10,
-                              right: 0,
-                              child: GestureDetector(
-                                onTap: () {
-                                  showPhotoOptions();
-                                },
-                                child: Container(
-                                  padding: EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.blue,
+                return SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(25),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (userData['profilePicture'] != null)
+                          // SizedBox(
+                          //   height: 10,
+                          // ),
+                          Stack(
+                            children: [
+                              if (userData['profilePicture'] != null &&
+                                  userData['profilePicture'] != "")
+                                CircleAvatar(
+                                  radius: 80,
+                                  backgroundColor: Colors.grey,
+                                  backgroundImage:
+                                      NetworkImage(userData['profilePicture']),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      showLargeImage(
+                                          userData['profilePicture']);
+                                    },
                                   ),
-                                  child: Icon(Icons.camera_alt,
-                                      color: Colors.white, size: 30),
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      SizedBox(height: 20),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Column(
-                            children: [
-                              Text(
-                                "Nama",
-                                style: TextStyle(fontSize: 18),
+                              if (userData['profilePicture'] == null ||
+                                  userData['profilePicture'] == "")
+                                CircleAvatar(
+                                  radius: 80,
+                                  backgroundColor: Colors.grey,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      showLargeImage(
+                                          userData['profilePicture']);
+                                    },
+                                    child: Icon(Icons.person,
+                                        size: 100, color: Colors.white),
+                                  ),
+                                ),
+                              Positioned(
+                                bottom: 10,
+                                right: 0,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    showPhotoOptions();
+                                  },
+                                  child: Container(
+                                    padding: EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.blue,
+                                    ),
+                                    child: Icon(Icons.camera_alt,
+                                        color: Colors.white, size: 30),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                      Container(
-                        padding: EdgeInsets.all(10),
-                        decoration: BoxDecoration(
+                        SizedBox(height: 20),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Column(
+                              children: [
+                                Text(
+                                  "Nama",
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border:
+                                  Border.all(color: Colors.black, width: 2)),
+                          child: Row(
+                            children: [
+                              Text(
+                                '${userData['nama'] ?? 'No nama available'}',
+                                style: TextStyle(fontSize: 20),
+                              ),
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          TextEditingController _controller =
+                                              TextEditingController();
+                                          return AlertDialog(
+                                            title: Text('Ubah nama'),
+                                            content: TextField(
+                                              controller: _controller,
+                                              decoration: InputDecoration(
+                                                hintText: 'Masukkan nama Anda',
+                                                focusedBorder:
+                                                    UnderlineInputBorder(
+                                                  borderSide: BorderSide(
+                                                      color: Colors
+                                                          .blue), // Warna garis bawah saat fokus
+                                                ),
+                                              ),
+                                              cursorColor: Colors.blue,
+                                            ),
+                                            actions: <Widget>[
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.of(context).pop();
+                                                },
+                                                child: Text(
+                                                  'Batal',
+                                                  style: TextStyle(
+                                                      color: Colors.blue),
+                                                ),
+                                              ),
+                                              TextButton(
+                                                onPressed: () {
+                                                  String newnama =
+                                                      _controller.text;
+                                                  updateUserData('nama',
+                                                      newnama.toLowerCase());
+                                                  Navigator.of(context).pop();
+                                                },
+                                                child: Text(
+                                                  'Simpan',
+                                                  style: TextStyle(
+                                                      color: Colors.blue),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    },
+                                    child: Icon(
+                                      Icons.edit,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Column(
+                              children: [
+                                Text(
+                                  "Telepon",
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.black, width: 2)),
-                        child: Row(
-                          children: [
-                            Text(
-                              '${userData['nama'] ?? 'No nama available'}',
-                              style: TextStyle(fontSize: 20),
-                            ),
-                            Expanded(
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) {
-                                        TextEditingController _controller =
-                                            TextEditingController();
-                                        return AlertDialog(
-                                          title: Text('Update Nama'),
-                                          content: TextField(
-                                            controller: _controller,
-                                            decoration: InputDecoration(
-                                                hintText: 'Isi nama baru'),
-                                          ),
-                                          actions: <Widget>[
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.of(context).pop();
-                                              },
-                                              child: Text('Cancel'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                String newnama =
-                                                    _controller.text;
-                                                updateUserData('nama', newnama);
-                                                Navigator.of(context).pop();
-                                              },
-                                              child: Text('Update'),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  },
-                                  child: Icon(Icons.edit),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(
-                        height: 10,
-                      ),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Column(
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: Row(
                             children: [
                               Text(
-                                "Telepon",
-                                style: TextStyle(fontSize: 18),
+                                '${userData['telepon'] ?? 'No telepon available'}',
+                                style: TextStyle(fontSize: 20),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.black, width: 2),
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              '${userData['telepon'] ?? 'No telepon available'}',
-                              style: TextStyle(fontSize: 20),
-                            ),
-                            Expanded(
-                              child: Align(
-                                alignment: Alignment.centerRight,
-                                child: GestureDetector(
-                                  onTap: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) {
-                                        TextEditingController _controller =
-                                            TextEditingController();
+                              Expanded(
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          TextEditingController _controller =
+                                              TextEditingController();
 
-                                        return AlertDialog(
-                                          title: Text('Update telepon'),
-                                          content: TextField(
-                                            keyboardType: TextInputType.number,
-                                            controller: _controller,
-                                            decoration: InputDecoration(
+                                          return AlertDialog(
+                                            title: Text('Ubah telepon'),
+                                            content: TextField(
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              controller: _controller,
+                                              decoration: InputDecoration(
                                                 hintText:
-                                                    'Isi No. telepon baru'),
-                                          ),
-                                          actions: <Widget>[
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.of(context).pop();
-                                              },
-                                              child: Text('Cancel'),
+                                                    'Masukkan nomor telepon Anda',
+                                                focusedBorder:
+                                                    UnderlineInputBorder(
+                                                  borderSide: BorderSide(
+                                                      color: Colors
+                                                          .blue), // Warna garis bawah saat fokus
+                                                ),
+                                              ),
+                                              cursorColor: Colors.blue,
                                             ),
-                                            TextButton(
-                                              onPressed: () {
-                                                String newtelepon =
-                                                    _controller.text;
-                                                updateUserData(
-                                                    'telepon', newtelepon);
-                                                Navigator.of(context).pop();
-                                              },
-                                              child: Text('Update'),
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                    );
-                                  },
-                                  child: Icon(Icons.edit),
+                                            actions: <Widget>[
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.of(context).pop();
+                                                },
+                                                child: Text(
+                                                  'Batal',
+                                                  style: TextStyle(
+                                                      color: Colors.blue),
+                                                ),
+                                              ),
+                                              TextButton(
+                                                onPressed: () {
+                                                  String newtelepon =
+                                                      _controller.text;
+                                                  updateUserData(
+                                                      'telepon', newtelepon);
+                                                  Navigator.of(context).pop();
+                                                },
+                                                child: Text(
+                                                  'Simpan',
+                                                  style: TextStyle(
+                                                      color: Colors.blue),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      );
+                                    },
+                                    child: Icon(
+                                      Icons.edit,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(
-                        height: 10,
-                      ),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Column(
-                            children: [
-                              Text(
-                                "Email",
-                                style: TextStyle(fontSize: 18),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                      Container(
-                        padding: EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.black, width: 2),
                         ),
-                        child: Row(
+                        SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              '${userData['email'] ?? 'No email available'}',
-                              style: TextStyle(fontSize: 20),
+                            Column(
+                              children: [
+                                Text(
+                                  "Email",
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                        Container(
+                          padding: EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.black, width: 2),
+                          ),
+                          child: Row(
+                            children: [
+                              Text(
+                                '${userData['email'] ?? 'No email available'}',
+                                style: TextStyle(fontSize: 20),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },

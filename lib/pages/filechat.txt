@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:fast_rsa/fast_rsa.dart';
@@ -7,11 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:googleapis_auth/auth_io.dart';
-import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -40,48 +36,16 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final DatabaseReference referenceDatabase =
-      FirebaseDatabase.instance.ref().child('rooms');
+      FirebaseDatabase.instance.reference().child('rooms');
   TextEditingController messageController = TextEditingController();
   final storage = FlutterSecureStorage();
   Map<String, String> decryptedMessages = {};
   Map<String, bool> _downloadingFiles = {};
 
-  // FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-  //     FlutterLocalNotificationsPlugin();
-
-  String? userNama;
-
-  Future<void> getUserNama() async {
-    final String uid = FirebaseAuth.instance.currentUser!.uid;
-    final DatabaseReference referenceDatabase =
-        FirebaseDatabase.instance.ref().child('users').child(uid);
-
-    try {
-      final DatabaseEvent event = await referenceDatabase.once();
-
-      if (event.snapshot.exists) {
-        final Map<dynamic, dynamic>? userData =
-            event.snapshot.value as Map<dynamic, dynamic>?;
-        userNama = userData?['nama'];
-        print("Nama pengguna: $userNama");
-      } else {
-        print("Data pengguna tidak ditemukan.");
-      }
-    } catch (e) {
-      print("Terjadi kesalahan saat mengambil data pengguna: $e");
-    }
-  }
-
   @override
   void initState() {
     super.initState();
-    // const AndroidInitializationSettings initializationSettingsAndroid =
-    //     AndroidInitializationSettings('icon');
-
-    // const InitializationSettings initializationSettings =
-    //     InitializationSettings(android: initializationSettingsAndroid);
-
-    // flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    // FlutterDownloader.registerCallback(downloadCallback);
   }
 
   // void downloadCallback(String id, DownloadTaskStatus status, int progress) {
@@ -106,6 +70,7 @@ class _ChatScreenState extends State<ChatScreen> {
   //   }
 
   //   // mengupdate UI atau status unduhan di sini
+  //   // Misalnya, menggunakan `setState` untuk memperbarui status UI
   // }
 
   IconData _getFileTypeIcon(String? fileName) {
@@ -163,11 +128,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!decryptedMessages.containsKey(messageId)) {
       String? priv_key = await storage.read(key: "private_key");
       var decrypted = await RSA.decryptPKCS1v15(encryptedText, priv_key!);
-      if (mounted) {
-        setState(() {
-          decryptedMessages[messageId] = decrypted;
-        });
-      }
+      setState(() {
+        decryptedMessages[messageId] = decrypted;
+      });
     }
   }
 
@@ -176,15 +139,11 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         iconTheme: IconThemeData(color: Colors.white),
-        leading: Row(
-          children: [
-            IconButton(
-              icon: Image.asset('assets/icons/back.png'),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
+        leading: IconButton(
+          icon: Image.asset('assets/icons/back.png'),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
         ),
         backgroundColor: Colors.blue,
         actions: <Widget>[
@@ -348,14 +307,8 @@ class _ChatScreenState extends State<ChatScreen> {
                         messages.add({"id": key, ...value});
                       });
                     }
-                    messages.sort((a, b) {
-                      final timestampA = a['timestamp'] ??
-                          0; // Provide a default value of 0 if null
-                      final timestampB = b['timestamp'] ??
-                          0; // Provide a default value of 0 if null
-                      return timestampB.compareTo(timestampA);
-                    });
-
+                    messages.sort(
+                        (a, b) => b['timestamp'].compareTo(a['timestamp']));
                     return ListView.builder(
                       reverse: true,
                       itemCount: messages.length,
@@ -557,19 +510,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(
                                                   SnackBar(
-                                                    content: Text(
-                                                        'File sudah diunduh.'),
-                                                    backgroundColor:
-                                                        Colors.blue,
-                                                    behavior: SnackBarBehavior
-                                                        .floating,
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                    ),
-                                                  ),
+                                                      content: Text(
+                                                          'File already downloaded.')),
                                                 );
                                               }
                                             },
@@ -604,7 +546,7 @@ class _ChatScreenState extends State<ChatScreen> {
             Align(
               alignment: Alignment.bottomCenter,
               child: Padding(
-                padding: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(0),
                 child: Container(
                   color: Colors.white,
                   child: Padding(
@@ -612,29 +554,35 @@ class _ChatScreenState extends State<ChatScreen> {
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     child: Row(
                       children: [
-                        Container(
-                          color: Colors.white,
-                          // height: 50,
-                          width: MediaQuery.of(context).size.width * 0.70,
-                          padding: EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              SingleChildScrollView(
-                                child: TextField(
-                                  controller: messageController,
-                                  maxLines: 5,
-                                  minLines: 1,
-                                  decoration: InputDecoration(
-                                      hintText: "Ketik Pesan",
-                                      hintStyle: TextStyle(color: Colors.grey),
-                                      border: InputBorder.none),
+                        Expanded(
+                          child: Container(
+                            color: Colors.white,
+                            height: 50,
+                            width: MediaQuery.of(context).size.width * 0.70,
+                            padding: EdgeInsets.symmetric(horizontal: 8.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  // height: 35,
+                                  // width: MediaQuery.of(context).size.width * 0.5,
+                                  child: SingleChildScrollView(
+                                    child: TextField(
+                                      controller: messageController,
+                                      maxLines: null,
+                                      decoration: InputDecoration(
+                                          hintText: "Ketik Pesan",
+                                          hintStyle:
+                                              TextStyle(color: Colors.grey),
+                                          border: InputBorder.none),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              SizedBox(
-                                width: 10,
-                              ),
-                            ],
+                                SizedBox(
+                                  width: 10,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                         Row(
@@ -642,16 +590,6 @@ class _ChatScreenState extends State<ChatScreen> {
                             PopupMenuButton(
                               icon: Image.asset('assets/icons/clip.png'),
                               onSelected: (value) async {
-                                final storageStatus =
-                                    await Permission.storage.status;
-                                if (!storageStatus.isGranted) {
-                                  final result =
-                                      await Permission.storage.request();
-                                  if (!result.isGranted) {
-                                    print('Izin penyimpanan tidak diberikan.');
-                                    return; // Hentikan jika izin tidak diberikan
-                                  }
-                                }
                                 if (value == 'image') {
                                   final imagePicker = ImagePicker();
                                   final pickedFile = await imagePicker
@@ -661,9 +599,10 @@ class _ChatScreenState extends State<ChatScreen> {
                                     final imageFile = File(pickedFile.path);
                                     final imageRef = FirebaseStorage.instance
                                         .ref()
+                                        .child('images')
                                         .child(widget.roomId)
                                         .child(
-                                            '${DateTime.now().millisecondsSinceEpoch}');
+                                            '${DateTime.now().millisecondsSinceEpoch}.jpg');
                                     await imageRef.putFile(imageFile);
                                     final imageUrl =
                                         await imageRef.getDownloadURL();
@@ -682,6 +621,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                       final fileName = result.files.single.name;
                                       final fileRef = FirebaseStorage.instance
                                           .ref()
+                                          .child('files')
                                           .child(widget.roomId)
                                           .child(
                                               '${DateTime.now().millisecondsSinceEpoch}_$fileName');
@@ -775,10 +715,7 @@ class _ChatScreenState extends State<ChatScreen> {
       String? fileUrl,
       String? fileName,
       int? fileSize}) async {
-    if (text.isNotEmpty ||
-        imageUrl != null ||
-        fileUrl != null ||
-        fileName != null) {
+    if (text.isNotEmpty || imageUrl != null || fileUrl != null) {
       Map<String, dynamic> messageData = {
         'sender': FirebaseAuth.instance.currentUser!.uid,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
@@ -790,7 +727,6 @@ class _ChatScreenState extends State<ChatScreen> {
         print("============================");
 
         String? public_key;
-        String? fcmToken;
 
         final DatabaseReference refToUsers =
             FirebaseDatabase.instance.ref().child('users');
@@ -810,215 +746,37 @@ class _ChatScreenState extends State<ChatScreen> {
                 print("=====tampildata pubkey=====");
                 public_key = value;
                 print(value);
-              } else if (key == "fcmToken") {
-                print("=====tampildata fcmToken=====");
-                fcmToken = value;
-                print(value);
               }
             });
           }
         });
-        if (public_key != null && fcmToken != null) {
-          // Enkripsi pesan sebelum dikirim
-          String messageId = referenceDatabase.child(widget.roomId).push().key!;
+        String messageId = referenceDatabase.child(widget.roomId).push().key!;
+        decryptedMessages[messageId] = text;
+
+        String encrypted = await RSA.encryptPKCS1v15(text, public_key!);
+        messageData['text'] = encrypted;
+
+        setState(() {
           decryptedMessages[messageId] = text;
-
-          String encrypted = await RSA.encryptPKCS1v15(text, public_key!);
-          messageData['text'] = encrypted;
-
-          setState(() {
-            decryptedMessages[messageId] = text;
-          });
-
-          // Kirim data pesan ke Firebase Realtime Database
-          // referenceDatabase.child(widget.roomId).push().set(messageData);
-
-          // Kirim notifikasi menggunakan FCM
-          await _sendFCMNotification(fcmToken!, text, messageType: "text");
-          // await _sendLocalNotification("$userNama", text, messageType: "text");
-        } else {
-          print("Kunci publik atau FCM token tidak ditemukan.");
-        }
+        });
       }
 
       if (imageUrl != null) {
         messageData['imageUrl'] = imageUrl;
-        print("===== current UID ========");
-        print(widget.targetUserID);
-        print("============================");
-
-        String? fcmToken;
-
-        final DatabaseReference refToUsers =
-            FirebaseDatabase.instance.ref().child('users');
-
-        await refToUsers
-            .child(widget.targetUserID)
-            .once()
-            .then((DatabaseEvent event) {
-          print(event.snapshot.value);
-
-          if (event.snapshot.value != null) {
-            Map<dynamic, dynamic>? pubkey =
-                event.snapshot.value as Map<dynamic, dynamic>?;
-
-            pubkey?.forEach((key, value) {
-              if (key == "fcmToken") {
-                print("=====tampildata fcmToken=====");
-                fcmToken = value;
-                print(value);
-              }
-            });
-          }
-        });
-        await _sendFCMNotification(fcmToken!, imageUrl, messageType: "image");
-        // await _sendLocalNotification("$userNama", imageUrl,
-        //     messageType: "image");
       }
 
       if (fileUrl != null) {
         messageData['fileUrl'] = fileUrl;
         messageData['fileName'] = fileName;
         messageData['fileSize'] = fileSize;
-        print("===== current UID ========");
-        print(widget.targetUserID);
-        print("============================");
-
-        String? fcmToken;
-
-        final DatabaseReference refToUsers =
-            FirebaseDatabase.instance.ref().child('users');
-
-        await refToUsers
-            .child(widget.targetUserID)
-            .once()
-            .then((DatabaseEvent event) {
-          print(event.snapshot.value);
-
-          if (event.snapshot.value != null) {
-            Map<dynamic, dynamic>? pubkey =
-                event.snapshot.value as Map<dynamic, dynamic>?;
-
-            pubkey?.forEach((key, value) {
-              if (key == "fcmToken") {
-                print("=====tampildata fcmToken=====");
-                fcmToken = value;
-                print(value);
-              }
-            });
-          }
-        });
-        await _sendFCMNotification(fcmToken!, fileName!, messageType: "file");
-        // await _sendLocalNotification("$userNama", fileName!,
-        // messageType: "file");
       }
 
       referenceDatabase.child(widget.roomId).push().set(messageData);
     }
   }
 
-  Future<String> getOAuthToken() async {
-    final serviceAccountJson =
-        await rootBundle.loadString('assets/service_account.json');
-    final serviceAccount = jsonDecode(serviceAccountJson);
-
-    final accountCredentials =
-        ServiceAccountCredentials.fromJson(serviceAccount);
-    final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
-
-    final client = http.Client();
-    final accessCredentials = await obtainAccessCredentialsViaServiceAccount(
-      accountCredentials,
-      scopes,
-      client,
-    );
-
-    return accessCredentials.accessToken.data;
-  }
-
-  Future<void> _sendFCMNotification(String fcmToken, String message,
-      {String? messageType}) async {
-    const String firebaseApiUrl =
-        'https://fcm.googleapis.com/v1/projects/chatapp-de7e8/messages:send';
-
-    try {
-      final String oauthToken = await getOAuthToken();
-      await getUserNama();
-
-      Map<String, dynamic> notificationPayload = {
-        "message": {
-          "token": fcmToken,
-          "notification": {
-            // "data": {
-            "title": "$userNama",
-            "body": messageType == "text"
-                ? message
-                : messageType == "file"
-                    ? "📄 $message"
-                    : "🖼️ Image",
-          },
-          "data": {
-            "click_action": "FLUTTER_NOTIFICATION_CLICK",
-            "screen": "ChatScreen",
-            "messageType": messageType ?? "text",
-            "title": "$userNama",
-            "body": messageType == "text"
-                ? message
-                : messageType == "file"
-                    ? "📄 $message"
-                    : "🖼️ Image",
-            "roomId": widget.roomId,
-            "nama": widget.nama,
-            "profilePicture": widget.profilePicture,
-            "targetUserID": widget.targetUserID,
-            "email": widget.email,
-            "telepon": widget.telepon,
-          }
-        }
-      };
-
-      var response = await http.post(
-        Uri.parse(firebaseApiUrl),
-        headers: {
-          "Authorization": "Bearer $oauthToken",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode(notificationPayload),
-      );
-
-      if (response.statusCode == 200) {
-        print("Notifikasi berhasil dikirim.");
-      } else {
-        print(
-            "Gagal mengirim notifikasi: ${response.statusCode} - ${response.body}");
-      }
-    } catch (e) {
-      print("Terjadi kesalahan saat mengirim notifikasi: $e");
-    }
-  }
-
   void _clearChat() async {
     await referenceDatabase.child(widget.roomId).remove();
-
-    final storageRef = FirebaseStorage.instance.ref().child(widget.roomId);
-    final ListResult result = await storageRef.listAll();
-    for (var item in result.items) {
-      try {
-        await item.delete();
-      } catch (e) {
-        print('gagal hapus ${item.fullPath}: $e');
-      }
-    }
-
-    try {
-      await storageRef.delete();
-    } catch (e) {
-      if (e is FirebaseException && e.code == 'object-not-found') {
-        print('folder tidak ditemukan');
-      } else {
-        print('gagal menghapus folder: $e');
-      }
-    }
     setState(() {
       decryptedMessages.clear();
     });
@@ -1067,28 +825,14 @@ class _ChatScreenState extends State<ChatScreen> {
               _downloadingFiles[fileName] = false;
             });
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Pengunduhan selesai.'),
-                backgroundColor: Colors.blue,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
+              SnackBar(content: Text('Download complete.')),
             );
           } else if (status == DownloadTaskStatus.failed) {
             setState(() {
               _downloadingFiles[fileName] = false;
             });
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Pengunduhan gagal, coba lagi.'),
-                backgroundColor: Colors.red,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
+              SnackBar(content: Text('Download failed, please try again.')),
             );
           } else if (status == DownloadTaskStatus.running) {
             setState(() {
@@ -1098,14 +842,7 @@ class _ChatScreenState extends State<ChatScreen> {
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Izin penyimpanan ditolak.'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+          SnackBar(content: Text('Storage permission denied.')),
         );
       }
     } catch (e) {
@@ -1114,14 +851,7 @@ class _ChatScreenState extends State<ChatScreen> {
         _downloadingFiles[fileName] = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
+        SnackBar(content: Text('An error occurred: $e')),
       );
     }
   }
@@ -1144,7 +874,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 future: _isFileDownloaded(fileName),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return SizedBox.shrink();
+                    return SizedBox
+                        .shrink(); // Optionally show a placeholder while waiting
                   } else if (snapshot.hasData && snapshot.data!) {
                     return Icon(Icons.done, color: Colors.white);
                   } else {

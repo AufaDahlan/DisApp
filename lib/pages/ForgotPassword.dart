@@ -12,16 +12,24 @@ class ForgotPasswordPage extends StatelessWidget {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Reset password email sent. Please check your email.'),
+          content: Text(
+              'Link untuk mengganti kata sandi sudah dikirim ke email anda, harap cek email anda'),
           backgroundColor: Colors.blue,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('Failed to send reset password email. Please try again.'),
+          content: Text('Gagal mengirimkan link ke email'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     }
@@ -39,7 +47,7 @@ class ForgotPasswordPage extends StatelessWidget {
           },
         ),
         title: Text(
-          "Lupa Password",
+          "Lupa Kata Sandi",
           style: TextStyle(
               fontSize: 22,
               fontFamily: 'Inter',
@@ -54,7 +62,7 @@ class ForgotPasswordPage extends StatelessWidget {
           children: [
             SizedBox(height: 10),
             Text(
-              'Reset your password',
+              'Atur ulang kata sandi',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -62,7 +70,7 @@ class ForgotPasswordPage extends StatelessWidget {
             ),
             SizedBox(height: 20),
             Text(
-              'Masukan email anda untuk mengganti password.',
+              'Masukan email anda untuk mengganti kata sandi.',
               style: TextStyle(fontSize: 16),
             ),
             SizedBox(height: 20),
@@ -71,8 +79,12 @@ class ForgotPasswordPage extends StatelessWidget {
               decoration: InputDecoration(
                 contentPadding:
                     EdgeInsets.symmetric(vertical: 13, horizontal: 10),
-                labelText: 'Email',
+                labelText: 'Masukkan Email',
+                floatingLabelStyle: TextStyle(color: Colors.blue),
                 border: OutlineInputBorder(),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.blue),
+                ),
               ),
               keyboardType: TextInputType.emailAddress,
               validator: (value) {
@@ -83,23 +95,29 @@ class ForgotPasswordPage extends StatelessWidget {
               },
             ),
             SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                _resetPassword(context);
-              },
-              style: ElevatedButton.styleFrom(
-                fixedSize: Size(double.infinity, 50),
-                backgroundColor: Colors.blue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      _resetPassword(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      fixedSize: Size(double.infinity, 50),
+                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    child: Text(
+                      'Ganti Kata Sandi',
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              child: Text(
-                'Reset Password',
-                style: TextStyle(
-                  color: Colors.white,
-                ),
-              ),
+              ],
             ),
           ],
         ),

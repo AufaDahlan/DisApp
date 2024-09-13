@@ -1,0 +1,539 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:realtime/firebase_options.dart';
+import 'package:realtime/pages/fillprofil.dart';
+import 'package:realtime/pages/home.dart';
+import 'package:realtime/pages/login.dart';
+import 'package:realtime/pages/splash.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  _sendLocalNotification(
+    message.notification?.title ?? 'No Title',
+    message.notification?.body ?? 'No Message',
+    messageType: message.data['messageType'] ?? 'text',
+  );
+  if (message.data['click_action'] == 'FLUTTER_NOTIFICATION_CLICK') {
+    // Navigasikan ke ChatScreen atau layar lain
+    // Gunakan data yang relevan dari `message.data`
+  }
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  UserDataCheckResult result = await _checkUserData();
+  MyApp.userDataCheckResult = result; // Simpan hasil pengecekan user data
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/icon');
+
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse:
+        (NotificationResponse notificationResponse) async {
+      // Tindakan yang diambil saat notifikasi ditekan
+    },
+  );
+
+  setupFirebaseMessaging();
+
+  runApp(MyApp());
+}
+
+// Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+//   print('Handling a background message: ${message.messageId}');
+// }
+
+Future<void> _sendLocalNotification(String title, String message,
+    {String? messageType}) async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+    'your_channel_id',
+    'your_channel_name',
+    channelDescription: 'your_channel_description',
+    importance: Importance.max,
+    priority: Priority.high,
+    showWhen: false,
+  );
+
+  const NotificationDetails platformChannelSpecifics =
+      NotificationDetails(android: androidPlatformChannelSpecifics);
+
+  await flutterLocalNotificationsPlugin.show(
+    0,
+    title,
+    messageType == "text"
+        ? message
+        : messageType == "file"
+            ? "📄 $message"
+            : "🖼️ Image",
+    platformChannelSpecifics,
+    payload: 'data',
+  );
+}
+
+void setupFirebaseMessaging() {
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    _sendLocalNotification(
+      message.notification?.title ?? 'No Title',
+      message.notification?.body ?? 'No Message',
+      messageType: message.data['messageType'] ?? 'text',
+    );
+  });
+}
+
+Future<UserDataCheckResult> _checkUserData() async {
+  try {
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/user_data.json');
+
+    if (await file.exists()) {
+      String fileContent = await file.readAsString();
+      Map<String, dynamic> userData = json.decode(fileContent);
+
+      if (_isUserDataComplete(userData)) {
+        return UserDataCheckResult(userDataComplete: true, hasUserData: true);
+      } else {
+        return UserDataCheckResult(userDataComplete: false, hasUserData: true);
+      }
+    }
+    return UserDataCheckResult(userDataComplete: false, hasUserData: false);
+  } catch (e) {
+    print('Error checking userdata file: $e');
+    return UserDataCheckResult(userDataComplete: false, hasUserData: false);
+  }
+}
+
+bool _isUserDataComplete(Map<String, dynamic> userData) {
+  if (userData['nama'] == '' ||
+      userData['email'] == '' ||
+      userData['telepon'] == '' ||
+      userData['uid'] == '') {
+    return false;
+  }
+  return true;
+}
+
+class UserDataCheckResult {
+  final bool userDataComplete;
+  final bool hasUserData;
+
+  UserDataCheckResult(
+      {required this.userDataComplete, required this.hasUserData});
+}
+
+class MyApp extends StatelessWidget {
+  static late UserDataCheckResult userDataCheckResult;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'DisApp',
+      home: SplashScreenPage(),
+    );
+  }
+
+  static Widget getInitialPage() {
+    if (!userDataCheckResult.hasUserData) {
+      return LoginPage();
+    } else if (!userDataCheckResult.userDataComplete) {
+      return fillProfile();
+    } else {
+      return Home_Page();
+    }
+  }
+}
+
+
+
+
+
+
+
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:realtime/firebase_options.dart';
+import 'package:realtime/pages/fillprofil.dart';
+import 'package:realtime/pages/home.dart';
+import 'package:realtime/pages/login.dart';
+import 'package:realtime/pages/splash.dart';
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  _sendLocalNotification(
+    message.notification?.title ?? 'No Title',
+    message.notification?.body ?? 'No Message',
+    messageType: message.data['messageType'] ?? 'text',
+  );
+  if (message.data['click_action'] == 'FLUTTER_NOTIFICATION_CLICK') {
+    // Navigasikan ke ChatScreen atau layar lain
+    // Gunakan data yang relevan dari `message.data`
+  }
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
+
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  UserDataCheckResult result = await _checkUserData();
+  MyApp.userDataCheckResult = result; // Simpan hasil pengecekan user data
+
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/icon');
+
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+  await flutterLocalNotificationsPlugin.initialize(
+    initializationSettings,
+    onDidReceiveNotificationResponse:
+        (NotificationResponse notificationResponse) async {
+      // Tindakan yang diambil saat notifikasi ditekan
+       if (notificationResponse.payload != null) {
+        print('Notification payload: ${notificationResponse.payload}');
+        // Tangani payload di sini
+      }
+    },
+  );
+
+  setupFirebaseMessaging();
+
+  runApp(MyApp());
+}
+
+Future<void> _sendLocalNotification(String title, String message,
+    {String? messageType}) async {
+  const AndroidNotificationDetails androidPlatformChannelSpecifics =
+      AndroidNotificationDetails(
+    'your_channel_id',
+    'your_channel_name',
+    channelDescription: 'your_channel_description',
+    importance: Importance.max,
+    priority: Priority.high,
+    showWhen: false,
+  );
+
+  const NotificationDetails platformChannelSpecifics =
+      NotificationDetails(android: androidPlatformChannelSpecifics);
+
+  await flutterLocalNotificationsPlugin.show(
+    0,
+    title,
+    messageType == "text"
+        ? message
+        : messageType == "file"
+            ? "📄 $message"
+            : "🖼️ Image",
+    platformChannelSpecifics,
+    payload: json.encode({'title': title, 'message': message, 'messageType': messageType}),
+  );
+}
+
+void setupFirebaseMessaging() {
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    _sendLocalNotification(
+      message.notification?.title ?? 'No Title',
+      message.notification?.body ?? 'No Message',
+      messageType: message.data['messageType'] ?? 'text',
+    );
+  });
+}
+
+Future<UserDataCheckResult> _checkUserData() async {
+  try {
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/user_data.json');
+
+    if (await file.exists()) {
+      String fileContent = await file.readAsString();
+      Map<String, dynamic> userData = json.decode(fileContent);
+
+      if (_isUserDataComplete(userData)) {
+        return UserDataCheckResult(userDataComplete: true, hasUserData: true);
+      } else {
+        return UserDataCheckResult(userDataComplete: false, hasUserData: true);
+      }
+    }
+    return UserDataCheckResult(userDataComplete: false, hasUserData: false);
+  } catch (e) {
+    print('Error checking userdata file: $e');
+    return UserDataCheckResult(userDataComplete: false, hasUserData: false);
+  }
+}
+
+bool _isUserDataComplete(Map<String, dynamic> userData) {
+  if (userData['nama'] == '' ||
+      userData['email'] == '' ||
+      userData['telepon'] == '' ||
+      userData['uid'] == '') {
+    return false;
+  }
+  return true;
+}
+
+class UserDataCheckResult {
+  final bool userDataComplete;
+  final bool hasUserData;
+
+  UserDataCheckResult(
+      {required this.userDataComplete, required this.hasUserData});
+}
+
+class MyApp extends StatelessWidget {
+  static late UserDataCheckResult userDataCheckResult;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'DisApp',
+      home: SplashScreenPage(),
+    );
+  }
+
+  static Widget getInitialPage() {
+    if (!userDataCheckResult.hasUserData) {
+      return LoginPage();
+    } else if (!userDataCheckResult.userDataComplete) {
+      return fillProfile();
+    } else {
+      return Home_Page();
+    }
+  }
+}
+
+
+
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:realtime/firebase_options.dart';
+import 'package:realtime/pages/chat.dart';
+import 'package:realtime/pages/fillprofil.dart';
+import 'package:realtime/pages/home.dart';
+import 'package:realtime/pages/login.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}
+
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+    FlutterLocalNotificationsPlugin();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await FlutterDownloader.initialize(debug: true, ignoreSsl: true);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  FirebaseMessaging messaging = FirebaseMessaging.instance;
+
+  await messaging.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // Initialize local notifications plugin
+  const AndroidInitializationSettings initializationSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  final InitializationSettings initializationSettings = InitializationSettings(
+    android: initializationSettingsAndroid,
+  );
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+
+  await FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    final data = message.data;
+    final roomId = data['roomId'] ?? '';
+    final nama = data['nama'] ?? '';
+    final profilePicture = data['profilePicture'] ?? '';
+    final targetUserID = data['targetUserID'] ?? '';
+    final email = data['email'] ?? '';
+    final telepon = data['telepon'] ?? '';
+
+    flutterLocalNotificationsPlugin.show(
+      0,
+      message.notification?.title ?? '',
+      message.notification?.body ?? '',
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          'channel_id',
+          'channel_name',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+      ),
+      payload: jsonEncode({
+        'roomId': roomId,
+        'nama': nama,
+        'profilePicture': profilePicture,
+        'targetUserID': targetUserID,
+        'email': email,
+        'telepon': telepon,
+      }),
+    );
+  });
+
+  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+    final data = message.data;
+    MyApp.navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (context) => ChatScreen(
+          roomId: data['roomId'] ?? '',
+          nama: data['nama'] ?? '',
+          profilePicture: data['profilePicture'] ?? '',
+          targetUserID: data['targetUserID'] ?? '',
+          email: data['email'] ?? '',
+          telepon: data['telepon'] ?? '',
+        ),
+      ),
+    );
+  });
+
+  UserDataCheckResult result = await _checkUserData();
+  MyApp.userDataCheckResult = result; // Simpan hasil pengecekan user data
+
+  runApp(MyApp());
+}
+
+Future<UserDataCheckResult> _checkUserData() async {
+  try {
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/user_data.json');
+
+    if (await file.exists()) {
+      String fileContent = await file.readAsString();
+      Map<String, dynamic> userData =
+          json.decode(fileContent) as Map<String, dynamic>;
+
+      if (_isUserDataComplete(userData)) {
+        return UserDataCheckResult(userDataComplete: true, hasUserData: true);
+      } else {
+        return UserDataCheckResult(userDataComplete: false, hasUserData: true);
+      }
+    }
+    return UserDataCheckResult(userDataComplete: false, hasUserData: false);
+  } catch (e) {
+    print('Error checking userdata file: $e');
+    return UserDataCheckResult(userDataComplete: false, hasUserData: false);
+  }
+}
+
+bool _isUserDataComplete(Map<String, dynamic> userData) {
+  if (userData['nama'] == '' ||
+      userData['email'] == '' ||
+      userData['telepon'] == '' ||
+      userData['uid'] == '') {
+    return false;
+  }
+  return true;
+}
+
+class UserDataCheckResult {
+  final bool userDataComplete;
+  final bool hasUserData;
+
+  UserDataCheckResult(
+      {required this.userDataComplete, required this.hasUserData});
+}
+
+class MyApp extends StatelessWidget {
+  static late UserDataCheckResult userDataCheckResult;
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'DisApp',
+      navigatorKey: navigatorKey,
+      home: getInitialPage(),
+      routes: {
+        '/chat': (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          return ChatScreen(
+            roomId: args?['roomId'] ?? '',
+            nama: args?['nama'] ?? '',
+            profilePicture: args?['profilePicture'] ?? '',
+            targetUserID: args?['targetUserID'] ?? '',
+            email: args?['email'] ?? '',
+            telepon: args?['telepon'] ?? '',
+          );
+        },
+      },
+    );
+  }
+
+  static Widget getInitialPage() {
+    if (!userDataCheckResult.hasUserData) {
+      return LoginPage();
+    } else if (!userDataCheckResult.userDataComplete) {
+      return fillProfile();
+    } else {
+      return Home_Page();
+    }
+  }
+}

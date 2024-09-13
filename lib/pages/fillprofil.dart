@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
@@ -7,6 +8,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:realtime/pages/home.dart';
 
@@ -33,7 +35,10 @@ class _fillProfileState extends State<fillProfile> {
             content: Text("Untuk melanjutkan, izin penyimpanan diperlukan."),
             actions: <Widget>[
               TextButton(
-                child: Text("Tutup"),
+                child: Text(
+                  "Tutup",
+                  style: TextStyle(color: Colors.blue),
+                ),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
@@ -76,7 +81,7 @@ class _fillProfileState extends State<fillProfile> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("Upload Profile Picture"),
+          title: Text("Unggah foto Profil"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -85,8 +90,25 @@ class _fillProfileState extends State<fillProfile> {
                   Navigator.pop(context);
                   selectImage(ImageSource.gallery);
                 },
-                leading: Icon(Icons.image),
-                title: Text("Select from Gallery"),
+                leading: Icon(
+                  Icons.image,
+                  color: Colors.blue,
+                ),
+                title: Text("Pilih dari galeri"),
+              ),
+              ListTile(
+                onTap: () {
+                  Navigator.pop(context);
+                  deleteProfilePicture();
+                  setState(() {
+                    imageFile = null;
+                  });
+                },
+                leading: Icon(
+                  Icons.delete,
+                  color: Colors.blue,
+                ),
+                title: Text("Hapus foto profil"),
               ),
             ],
           ),
@@ -114,6 +136,7 @@ class _fillProfileState extends State<fillProfile> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       String uid = user.uid;
+      String email = user.email ?? '';
 
       String imageUrl = '';
       if (imageFile != null) {
@@ -127,12 +150,23 @@ class _fillProfileState extends State<fillProfile> {
       }
 
       DatabaseReference usersRef =
-          FirebaseDatabase.instance.reference().child('users');
+          FirebaseDatabase.instance.ref().child('users');
       usersRef.child(uid).update({
-        'nama': nama,
-        'telepon': telepon,
+        'nama': nama.toLowerCase(),
+        'telepon': telepon.toLowerCase(),
         'profilePicture': imageUrl,
+        'email': email,
       });
+
+      Map<String, dynamic> userData = {
+        'email': email,
+        'uid': user.uid,
+        'nama': nama.toLowerCase(),
+        'telepon': telepon,
+      };
+
+      print('Data Pengguna: $userData');
+      await _saveUserDataToFile(userData);
 
       print("Profile data uploaded!");
       Navigator.popUntil(context, (route) => route.isFirst);
@@ -145,6 +179,12 @@ class _fillProfileState extends State<fillProfile> {
     } else {
       print("Error: User not found");
     }
+  }
+
+  Future<void> _saveUserDataToFile(Map<String, dynamic> userData) async {
+    final directory = await getApplicationDocumentsDirectory();
+    final file = File('${directory.path}/user_data.json');
+    await file.writeAsString(json.encode(userData));
   }
 
   void showLargeImage() {
@@ -162,7 +202,7 @@ class _fillProfileState extends State<fillProfile> {
         body: Stack(
           children: [
             Container(
-              color: Colors.black, // Latar belakang hitam
+              color: Colors.black,
               alignment: Alignment.center,
               child: Hero(
                 tag: 'profileImage',
@@ -183,14 +223,12 @@ class _fillProfileState extends State<fillProfile> {
       String uid = user.uid;
       String fileName = '$uid.jpg';
 
-      // Delete image from Firebase storage
       Reference ref =
           FirebaseStorage.instance.ref("profilePicture").child(fileName);
       await ref.delete();
 
-      // Update user data in the database to remove the profile picture URL
       DatabaseReference usersRef =
-          FirebaseDatabase.instance.reference().child('users');
+          FirebaseDatabase.instance.ref().child('users');
       usersRef.child(uid).update({'profilePicture': ''});
     } else {
       print("Error: User not found");
@@ -203,7 +241,14 @@ class _fillProfileState extends State<fillProfile> {
       appBar: AppBar(
         centerTitle: true,
         automaticallyImplyLeading: false,
-        title: Text("Isi Profile"),
+        title: Text(
+          "Lengkapi profil Anda",
+          style: TextStyle(
+            color: Colors.blue,
+            fontSize: 26,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
       body: SafeArea(
         child: Container(
@@ -285,7 +330,7 @@ class _fillProfileState extends State<fillProfile> {
                 controller: teleponController,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  hintText: '08xxxxxxxxxx',
+                  hintText: 'Masukan nomor telepon Anda',
                   contentPadding:
                       EdgeInsets.symmetric(vertical: 13, horizontal: 10),
                   border: OutlineInputBorder(),
