@@ -772,7 +772,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _sendMessage(String text,
       {String? imageUrl,
+      String? imagestatus,
       String? fileUrl,
+      String? filestatus,
       String? fileName,
       int? fileSize}) async {
     if (text.isNotEmpty ||
@@ -843,6 +845,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (imageUrl != null) {
         messageData['imageUrl'] = imageUrl;
+        messageData['imagestatus'] = false;
         print("===== current UID ========");
         print(widget.targetUserID);
         print("============================");
@@ -878,6 +881,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       if (fileUrl != null) {
         messageData['fileUrl'] = fileUrl;
+        messageData['filestatus'] = false;
         messageData['fileName'] = fileName;
         messageData['fileSize'] = fileSize;
         print("===== current UID ========");
