@@ -552,7 +552,8 @@ class _ChatScreenState extends State<ChatScreen> {
                                                 });
                                                 await _downloadFile(
                                                     message['fileUrl'],
-                                                    fileName);
+                                                    fileName,
+                                                    messageId);
                                               } else {
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(
@@ -1046,7 +1047,8 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _downloadFile(String fileUrl, String fileName) async {
+  Future<void> _downloadFile(
+      String fileUrl, String fileName, String messageId) async {
     try {
       var status = await Permission.storage.request();
       if (status.isGranted) {
@@ -1064,29 +1066,40 @@ class _ChatScreenState extends State<ChatScreen> {
           openFileFromNotification: true,
         );
 
-        await FlutterDownloader.registerCallback((id, status, progress) {
-          print('Download status for task $id: $status, progress: $progress%');
-          if (status == DownloadTaskStatus.complete) {
-            setState(() {
-              _downloadingFiles[fileName] = false;
-            });
+        FlutterDownloader.registerCallback(
+            (id, downloadStatus, progress) async {
+          print(
+              'Download status for task $id: $downloadStatus, progress: $progress%');
+
+          // Jika status unduhan selesai (completed)
+          if (downloadStatus == DownloadTaskStatus.complete) {
+            // Ubah status file di Firebase Realtime Database
+            final DatabaseReference fileStatusRef = FirebaseDatabase.instance
+                .ref()
+                .child('chats')
+                .child(widget.roomId)
+                .child(messageId)
+                .child('filestatus');
+
+            await fileStatusRef.set(true); // Set filestatus menjadi true
+
+            print('File status berhasil diubah menjadi true');
+
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Pengunduhan selesai.'),
-                backgroundColor: Colors.blue,
+                content:
+                    Text('Unduhan berhasil! File status diubah menjadi true.'),
+                backgroundColor: Colors.green,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
             );
-          } else if (status == DownloadTaskStatus.failed) {
-            setState(() {
-              _downloadingFiles[fileName] = false;
-            });
+          } else if (downloadStatus == DownloadTaskStatus.failed) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Pengunduhan gagal, coba lagi.'),
+                content: Text('Unduhan gagal.'),
                 backgroundColor: Colors.red,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
@@ -1094,10 +1107,6 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
             );
-          } else if (status == DownloadTaskStatus.running) {
-            setState(() {
-              _downloadingFiles[fileName] = true;
-            });
           }
         });
       } else {
@@ -1114,9 +1123,6 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     } catch (e) {
       print('Error downloading file: $e');
-      setState(() {
-        _downloadingFiles[fileName] = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Terjadi kesalahan: $e'),
