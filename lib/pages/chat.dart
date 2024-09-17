@@ -75,38 +75,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    // const AndroidInitializationSettings initializationSettingsAndroid =
-    //     AndroidInitializationSettings('icon');
-
-    // const InitializationSettings initializationSettings =
-    //     InitializationSettings(android: initializationSettingsAndroid);
-
-    // flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
-
-  // void downloadCallback(String id, DownloadTaskStatus status, int progress) {
-  //   print('Download status for task $id: $status, progress: $progress%');
-
-  //   // Menangani status unduhan
-  //   switch (status) {
-  //     case DownloadTaskStatus.enqueued:
-  //       print('Unduhan berada dalam antrean.');
-  //       break;
-  //     case DownloadTaskStatus.running:
-  //       print('Unduhan sedang berlangsung: $progress%');
-  //       break;
-  //     case DownloadTaskStatus.complete:
-  //       print('Unduhan selesai.');
-  //       break;
-  //     case DownloadTaskStatus.failed:
-  //       print('Unduhan gagal.');
-  //       break;
-  //     default:
-  //       break;
-  //   }
-
-  //   // mengupdate UI atau status unduhan di sini
-  // }
 
   IconData _getFileTypeIcon(String? fileName) {
     if (fileName == null) return Icons.insert_drive_file;
@@ -542,41 +511,48 @@ class _ChatScreenState extends State<ChatScreen> {
                                         if (!isSentByCurrentUser)
                                           GestureDetector(
                                             onTap: () async {
-                                              String fileName =
-                                                  message['fileName'];
-                                              if (!(await _isFileDownloaded(
-                                                  fileName))) {
-                                                setState(() {
-                                                  _downloadingFiles[fileName] =
-                                                      true;
-                                                });
+                                              if (message['filestatus'] ==
+                                                  false) {
                                                 await _downloadFile(
-                                                    message['fileUrl'],
-                                                    fileName,
-                                                    messageId);
+                                                  message['fileUrl'],
+                                                  message['fileName'],
+                                                  message['filestatus'],
+                                                );
                                               } else {
                                                 ScaffoldMessenger.of(context)
                                                     .showSnackBar(
                                                   SnackBar(
                                                     content: Text(
                                                         'File sudah diunduh.'),
-                                                    backgroundColor:
-                                                        Colors.blue,
-                                                    behavior: SnackBarBehavior
-                                                        .floating,
-                                                    shape:
-                                                        RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              10),
-                                                    ),
                                                   ),
                                                 );
                                               }
                                             },
-                                            child: _buildDownloadIcon(
-                                                message['fileName']),
-                                          )
+                                            child: Container(
+                                              width: 35,
+                                              height: 35,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: Colors.transparent,
+                                                border: Border.all(
+                                                  color: Colors.white,
+                                                  width: 2,
+                                                ),
+                                              ),
+                                              child: Center(
+                                                child: message['downloading'] ==
+                                                        true
+                                                    ? CircularProgressIndicator()
+                                                    : Icon(
+                                                        message['filestatus'] ==
+                                                                true
+                                                            ? Icons.done
+                                                            : Icons.download,
+                                                        color: Colors.white,
+                                                      ),
+                                              ),
+                                            ),
+                                          ),
                                       ],
                                     ),
                                     SizedBox(height: 5),
@@ -775,7 +751,7 @@ class _ChatScreenState extends State<ChatScreen> {
       {String? imageUrl,
       String? imagestatus,
       String? fileUrl,
-      String? filestatus,
+      bool? filestatus,
       String? fileName,
       int? fileSize}) async {
     if (text.isNotEmpty ||
@@ -1048,16 +1024,18 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _downloadFile(
-      String fileUrl, String fileName, String messageId) async {
+      String fileUrl, String fileName, bool filestatus) async {
     try {
       var status = await Permission.storage.request();
       if (status.isGranted) {
         final externalDir = await getExternalStorageDirectory();
         final savedDir = Directory('${externalDir!.path}/DisApp/Documents');
-        if (!await savedDir.exists()) {
+        bool hasExisted = await savedDir.exists();
+        if (!hasExisted) {
           await savedDir.create(recursive: true);
         }
 
+        // Mengunduh file
         await FlutterDownloader.enqueue(
           url: fileUrl,
           savedDir: savedDir.path,
@@ -1066,104 +1044,37 @@ class _ChatScreenState extends State<ChatScreen> {
           openFileFromNotification: true,
         );
 
-        FlutterDownloader.registerCallback(
-            (id, downloadStatus, progress) async {
-          print(
-              'Download status for task $id: $downloadStatus, progress: $progress%');
-
-          // Jika status unduhan selesai (completed)
-          if (downloadStatus == DownloadTaskStatus.complete) {
-            // Ubah status file di Firebase Realtime Database
-            final DatabaseReference fileStatusRef = FirebaseDatabase.instance
-                .ref()
-                .child('chats')
-                .child(widget.roomId)
-                .child(messageId)
-                .child('filestatus');
-
-            await fileStatusRef.set(true); // Set filestatus menjadi true
-
-            print('File status berhasil diubah menjadi true');
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content:
-                    Text('Unduhan berhasil! File status diubah menjadi true.'),
-                backgroundColor: Colors.green,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            );
-          } else if (downloadStatus == DownloadTaskStatus.failed) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Unduhan gagal.'),
-                backgroundColor: Colors.red,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            );
+        // Perbarui status file di Firebase
+        final Query refToMessage = FirebaseDatabase.instance
+            .ref()
+            .child('rooms')
+            .child(widget.roomId)
+            .orderByChild('fileName')
+            .equalTo(fileName);
+        refToMessage.once().then((DatabaseEvent event) {
+          if (event.snapshot.value != null) {
+            final Map<dynamic, dynamic> messages =
+                event.snapshot.value as Map<dynamic, dynamic>;
+            messages.forEach((key, value) {
+              final messageRef = FirebaseDatabase.instance
+                  .ref()
+                  .child('rooms')
+                  .child(widget.roomId)
+                  .child(key);
+              messageRef.update({'filestatus': true});
+            });
           }
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Izin penyimpanan ditolak.'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
           ),
         );
       }
     } catch (e) {
       print('Error downloading file: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Terjadi kesalahan: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
     }
-  }
-
-  Widget _buildDownloadIcon(String fileName) {
-    return Container(
-      width: 35,
-      height: 35,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.transparent,
-        border: Border.all(color: Colors.white, width: 2),
-      ),
-      child: Center(
-        child: _downloadingFiles[fileName] == true
-            ? CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              )
-            : FutureBuilder<bool>(
-                future: _isFileDownloaded(fileName),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return SizedBox.shrink();
-                  } else if (snapshot.hasData && snapshot.data!) {
-                    return Icon(Icons.done, color: Colors.white);
-                  } else {
-                    return Icon(Icons.download, color: Colors.white);
-                  }
-                },
-              ),
-      ),
-    );
   }
 
   Future<bool> _isFileDownloaded(String fileName) async {
